@@ -755,26 +755,32 @@ function renderPlanner() {
     const card = document.createElement('div');
     const hasAny = SLOTS.some(s => dayData[s]);
     card.className = 'day-card' + (hasAny ? ' has-meal' : '');
-    let slotsHtml = '';
+    let slotsHtml = `<div class="day-name">${day.slice(0,3).toUpperCase()}</div>`;
     SLOTS.forEach(slot => {
       const mealId = dayData[slot];
       const meal = mealId ? state.meals.find(m => m.id === mealId) : null;
       if (meal) { plannedSlots++; totalIng += meal.ingredients.length; }
-      slotsHtml += `<div class="slot-row">
-        <span class="slot-label">${SLOT_EMOJI[slot]}</span>
-        <div class="slot-body">
-          ${meal
-            ? `<span class="slot-meal-name">${meal.name}</span>
-               <div class="slot-actions">
-                 <button class="btn-day" onclick="openAssign('${day}','${slot}')">✏️</button>
-                 <button class="btn-day green" onclick="openIngCheck('${mealId}')">🧾</button>
-               </div>`
-            : `<button class="btn-day full-w" onclick="openAssign('${day}','${slot}')">+ Add</button>`
-          }
-        </div>
-      </div>`;
+      if (meal) {
+        slotsHtml += `<div class="slot-row">
+          <span class="slot-label">${SLOT_EMOJI[slot]}</span>
+          <div class="slot-body">
+            <span class="slot-meal-name">${meal.name}</span>
+            <div class="slot-actions">
+              <button class="btn-day" data-action="assign" data-day="${day}" data-slot="${slot}">✏️</button>
+              <button class="btn-day green" data-action="ingcheck" data-mealid="${mealId}">🧾</button>
+            </div>
+          </div>
+        </div>`;
+      } else {
+        slotsHtml += `<div class="slot-row">
+          <span class="slot-label">${SLOT_EMOJI[slot]}</span>
+          <div class="slot-body">
+            <button class="btn-day full-w" data-action="assign" data-day="${day}" data-slot="${slot}">+ Add</button>
+          </div>
+        </div>`;
+      }
     });
-    card.innerHTML = `<div class="day-name">${day.slice(0,3).toUpperCase()}</div>${slotsHtml}`;
+    card.innerHTML = slotsHtml;
     grid.appendChild(card);
   });
   const stats = document.getElementById('week-stats');
@@ -1011,6 +1017,14 @@ function toast(msg) {
   clearTimeout(toast._t);
   toast._t = setTimeout(() => el.classList.remove('show'), 2500);
 }
+
+// ─── Delegated click handler for days grid ───
+document.getElementById('days-grid').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  if (btn.dataset.action === 'assign') openAssign(btn.dataset.day, btn.dataset.slot);
+  if (btn.dataset.action === 'ingcheck') openIngCheck(btn.dataset.mealid);
+});
 
 // ─── Close modals on bg click ───
 document.querySelectorAll('.modal-bg').forEach(bg =>
