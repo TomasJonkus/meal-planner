@@ -489,7 +489,11 @@
         <p>Plan meals · check pantry · build shopping list</p>
       </div>
     </div>
-    <div class="week-label" id="week-label"></div>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button class="btn" id="btn-prev-week" onclick="prevWeek()" style="padding:6px 12px; font-size:16px;">‹</button>
+      <div class="week-label" id="week-label" onclick="goToThisWeek()" title="Click to jump to this week" style="cursor:pointer; min-width:190px; text-align:center;"></div>
+      <button class="btn" id="btn-next-week" onclick="nextWeek()" style="padding:6px 12px; font-size:16px;">›</button>
+    </div>
   </header>
 
   <div class="tabs">
@@ -593,6 +597,16 @@ const STORAGE_KEY = 'family-meal-planner-v1';
 const WORKER_URL = 'https://meal-planner.tomas-jonkus.workers.dev/api/state';
 
 // ─── Default data ───
+const EMPTY_WEEK = () => ({
+  Monday:    { breakfast: null, lunch: null, dinner: null },
+  Tuesday:   { breakfast: null, lunch: null, dinner: null },
+  Wednesday: { breakfast: null, lunch: null, dinner: null },
+  Thursday:  { breakfast: null, lunch: null, dinner: null },
+  Friday:    { breakfast: null, lunch: null, dinner: null },
+  Saturday:  { breakfast: null, lunch: null, dinner: null },
+  Sunday:    { breakfast: null, lunch: null, dinner: null },
+});
+
 const DEFAULT_STATE = {
   meals: [
     {
@@ -605,15 +619,7 @@ const DEFAULT_STATE = {
       ]
     }
   ],
-  week: {
-    Monday:    { breakfast: null, lunch: null, dinner: null },
-    Tuesday:   { breakfast: null, lunch: null, dinner: null },
-    Wednesday: { breakfast: null, lunch: null, dinner: null },
-    Thursday:  { breakfast: null, lunch: null, dinner: null },
-    Friday:    { breakfast: null, lunch: null, dinner: null },
-    Saturday:  { breakfast: null, lunch: null, dinner: null },
-    Sunday:    { breakfast: null, lunch: null, dinner: null },
-  },
+  weeks: {},       // keyed by ISO monday date string e.g. "2026-05-19"
   haveAtHome: {},
   shoppingChecked: {}
 };
@@ -623,10 +629,36 @@ let editingMealId = null;
 let assigningDay = null;
 let assigningSlot = null;
 let ingCheckMealId = null;
+let currentWeekKey = getMondayKey(new Date()); // "YYYY-MM-DD" of Monday
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const SLOTS = ['breakfast','lunch','dinner'];
 const SLOT_EMOJI = { breakfast: '🌅', lunch: '☀️', dinner: '🌙' };
+
+// ─── Week key helpers ───
+function getMondayKey(date) {
+  const d = new Date(date);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+function offsetWeek(key, delta) {
+  const d = new Date(key);
+  d.setDate(d.getDate() + delta * 7);
+  return d.toISOString().slice(0, 10);
+}
+function formatWeekLabel(key) {
+  const monday = new Date(key);
+  const sunday = new Date(key);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const isThisWeek = key === getMondayKey(new Date());
+  const suffix = isThisWeek ? ' · this week' : '';
+  return `${fmt(monday)} – ${fmt(sunday)}${suffix}`;
+}
+function currentWeekData() {
+  if (!state.weeks[currentWeekKey]) state.weeks[currentWeekKey] = EMPTY_WEEK();
+  return state.weeks[currentWeekKey];
+}
 
 // ─── Storage ───
 async function loadState() {
@@ -662,14 +694,28 @@ async function saveState() {
   }
 }
 
-// ─── Migrate old single-slot data format ───
+// ─── Migrate old single-slot / single-week data format ───
 function migrateState() {
-  DAYS.forEach(day => {
-    const val = state.week[day];
-    if (val === null || (typeof val === 'object' && val !== null && 'dinner' in val)) return;
-    // Old format: week[day] was a meal ID string or null
-    state.week[day] = { breakfast: null, lunch: null, dinner: typeof val === 'string' ? val : null };
-  });
+  // v1: had state.week (single week, single slot per day)
+  // v2: had state.week (single week, breakfast/lunch/dinner per day)
+  // v3: has state.weeks keyed by monday date
+  if (state.week) {
+    const key = getMondayKey(new Date());
+    const migrated = EMPTY_WEEK();
+    DAYS.forEach(day => {
+      const val = state.week[day];
+      if (!val) return;
+      if (typeof val === 'string') {
+        migrated[day].dinner = val;
+      } else if (typeof val === 'object' && 'dinner' in val) {
+        migrated[day] = val;
+      }
+    });
+    if (!state.weeks) state.weeks = {};
+    state.weeks[key] = migrated;
+    delete state.week;
+  }
+  if (!state.weeks) state.weeks = {};
 }
 
 // ─── Tabs ───
@@ -690,21 +736,22 @@ function render() {
 }
 
 function setWeekLabel() {
-  const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
-  const fmt = d => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  document.getElementById('week-label').textContent = `Week of ${fmt(monday)} – ${fmt(sunday)}`;
+  document.getElementById('week-label').textContent = formatWeekLabel(currentWeekKey);
+  document.getElementById('btn-prev-week').title = 'Previous week: ' + formatWeekLabel(offsetWeek(currentWeekKey, -1));
+  document.getElementById('btn-next-week').title = 'Next week: ' + formatWeekLabel(offsetWeek(currentWeekKey, 1));
 }
+
+function prevWeek() { currentWeekKey = offsetWeek(currentWeekKey, -1); render(); }
+function nextWeek() { currentWeekKey = offsetWeek(currentWeekKey, 1); render(); }
+function goToThisWeek() { currentWeekKey = getMondayKey(new Date()); render(); toast('Jumped to this week'); }
 
 function renderPlanner() {
   const grid = document.getElementById('days-grid');
   grid.innerHTML = '';
   let plannedSlots = 0, totalIng = 0;
+  const weekData = currentWeekData();
   DAYS.forEach(day => {
-    const dayData = state.week[day] || { breakfast: null, lunch: null, dinner: null };
+    const dayData = weekData[day] || { breakfast: null, lunch: null, dinner: null };
     const card = document.createElement('div');
     const hasAny = SLOTS.some(s => dayData[s]);
     card.className = 'day-card' + (hasAny ? ' has-meal' : '');
@@ -803,8 +850,9 @@ function updateBadge() {
 // ─── Data helpers ───
 function getMissingByMeal() {
   const result = {};
+  const weekData = currentWeekData();
   DAYS.forEach(day => {
-    const dayData = state.week[day] || {};
+    const dayData = weekData[day] || {};
     SLOTS.forEach(slot => {
       const mealId = dayData[slot];
       if (!mealId) return;
@@ -858,13 +906,15 @@ function openAssign(day, slot) {
 }
 function closeAssignModal() { document.getElementById('assign-modal').classList.remove('open'); }
 function confirmAssign() {
-  if (!state.week[assigningDay]) state.week[assigningDay] = { breakfast: null, lunch: null, dinner: null };
-  state.week[assigningDay][assigningSlot] = document.getElementById('assign-select').value;
+  const weekData = currentWeekData();
+  if (!weekData[assigningDay]) weekData[assigningDay] = { breakfast: null, lunch: null, dinner: null };
+  weekData[assigningDay][assigningSlot] = document.getElementById('assign-select').value;
   saveState(); render(); closeAssignModal();
   toast('Meal assigned ✓');
 }
 function clearDayMeal() {
-  if (state.week[assigningDay]) state.week[assigningDay][assigningSlot] = null;
+  const weekData = currentWeekData();
+  if (weekData[assigningDay]) weekData[assigningDay][assigningSlot] = null;
   saveState(); render(); closeAssignModal();
   toast('Meal removed');
 }
