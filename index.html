@@ -1004,7 +1004,13 @@ function saveMeal() {
 function deleteMeal(id) {
   if (!confirm('Delete this meal from your library?')) return;
   state.meals = state.meals.filter(m => m.id !== id);
-  DAYS.forEach(day => { if (state.week[day] === id) state.week[day] = null; });
+  Object.values(state.weeks).forEach(weekData => {
+    DAYS.forEach(day => {
+      SLOTS.forEach(slot => {
+        if (weekData[day] && weekData[day][slot] === id) weekData[day][slot] = null;
+      });
+    });
+  });
   saveState(); render();
   toast('Meal deleted');
 }
@@ -1019,7 +1025,7 @@ function toast(msg) {
 }
 
 // ─── Delegated click handler for days grid ───
-document.getElementById('days-grid').addEventListener('click', e => {
+document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   if (btn.dataset.action === 'assign') openAssign(btn.dataset.day, btn.dataset.slot);
