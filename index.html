@@ -905,7 +905,7 @@ function openAssign(day, slot) {
   document.getElementById('assign-title').textContent = `${day} — ${SLOT_EMOJI[slot]} ${slot.charAt(0).toUpperCase() + slot.slice(1)}`;
   const sel = document.getElementById('assign-select');
   sel.innerHTML = state.meals.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-  const current = state.week[day] && state.week[day][slot];
+  const current = currentWeekData()[day] && currentWeekData()[day][slot];
   if (current) sel.value = current;
   document.getElementById('btn-clear-day').style.display = current ? '' : 'none';
   document.getElementById('assign-modal').classList.add('open');
