@@ -436,7 +436,64 @@
   .shop-item.got label { text-decoration: line-through; }
   .shop-item label { font-size: 14px; cursor: pointer; flex: 1; color: var(--ink); }
 
-  /* ─── Empty states ─── */
+  /* ─── Pantry ─── */
+  .pantry-toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px; margin-bottom: 1.25rem;
+  }
+  .pantry-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; padding: 5px 14px;
+    border: 1px solid var(--border); border-radius: 99px;
+    background: none; cursor: pointer; color: var(--ink-muted);
+    transition: all 0.12s;
+  }
+  .filter-btn:hover { background: var(--cream); color: var(--ink); }
+  .filter-btn.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .pantry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .pantry-category {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .pantry-cat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--cream);
+    border-bottom: 1px solid var(--border);
+  }
+  .pantry-cat-name {
+    font-size: 13px; font-weight: 500; color: var(--ink);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .pantry-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .pantry-item:last-child { border-bottom: none; }
+  .pantry-item:hover { background: var(--cream); }
+  .pantry-item-name { flex: 1; font-size: 14px; color: var(--ink); }
+  .stock-btn {
+    font-size: 11px; padding: 3px 10px; border-radius: 99px;
+    border: 1px solid; cursor: pointer; font-family: 'DM Sans', sans-serif;
+    font-weight: 500; transition: all 0.12s; white-space: nowrap;
+  }
+  .stock-full  { color: var(--sage);  border-color: var(--sage-mid);  background: var(--sage-light); }
+  .stock-low   { color: var(--gold);  border-color: #E8D49A;          background: var(--gold-light); }
+  .stock-out   { color: var(--terra); border-color: #E8C4B0;          background: var(--terra-light); }
+  .stock-full:hover  { background: var(--sage-mid); }
+  .stock-low:hover   { background: #E8D49A; }
+  .stock-out:hover   { background: #E8C4B0; }
+  .pantry-empty-cat { padding: 10px 14px; font-size: 13px; color: var(--ink-faint); font-style: italic; }
+
   .empty {
     text-align: center;
     padding: 3rem 1rem;
@@ -499,6 +556,7 @@
   <div class="tabs">
     <button class="tab active" onclick="switchTab('planner')">📅 Weekly plan</button>
     <button class="tab" onclick="switchTab('meals')">📖 Meal library</button>
+    <button class="tab" onclick="switchTab('pantry')">🏺 Pantry</button>
     <button class="tab" id="shop-tab" onclick="switchTab('shopping')">🛒 Shopping list <span class="badge" id="shop-badge"></span></button>
   </div>
 
@@ -518,16 +576,66 @@
     <div class="meals-grid" id="meals-grid"></div>
   </div>
 
+  <!-- PANTRY -->
+  <div class="section" id="tab-pantry">
+    <div class="pantry-toolbar">
+      <div class="pantry-filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="low">⚠️ Running low</button>
+        <button class="filter-btn" data-filter="out">❌ Out of stock</button>
+      </div>
+      <button class="btn primary" onclick="openPantryModal()">+ Add item</button>
+    </div>
+    <div class="pantry-grid" id="pantry-grid"></div>
+  </div>
+
   <!-- SHOPPING -->
   <div class="section" id="tab-shopping">
     <div class="shop-header">
-      <p>Items needed for your planned meals</p>
+      <p>Meal ingredients needed + pantry items running low or out</p>
       <div style="display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn" onclick="clearChecked()">✓ Clear checked</button>
         <button class="btn" onclick="window.print()">🖨 Print list</button>
       </div>
     </div>
     <div class="shop-meals" id="shop-meals"></div>
+  </div>
+</div>
+
+<!-- PANTRY ADD/EDIT MODAL -->
+<div class="modal-bg" id="pantry-modal">
+  <div class="modal" style="width:400px;">
+    <h2 id="pantry-modal-title">Add pantry item</h2>
+    <div class="form-group">
+      <label class="form-label">Item name</label>
+      <input type="text" id="inp-pantry-name" placeholder="e.g. Paprika" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select id="inp-pantry-cat">
+        <option value="Spices & herbs">🌿 Spices & herbs</option>
+        <option value="Condiments & sauces">🫙 Condiments & sauces</option>
+        <option value="Baking & confectionary">🍬 Baking & confectionary</option>
+        <option value="Oils & vinegars">🫒 Oils & vinegars</option>
+        <option value="Grains & pasta">🌾 Grains & pasta</option>
+        <option value="Tins & preserves">🥫 Tins & preserves</option>
+        <option value="Drinks">☕ Drinks</option>
+        <option value="Other">📦 Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Stock level</label>
+      <div style="display:flex; gap:8px; margin-top:2px;">
+        <button type="button" class="stock-btn stock-full" id="stock-full"  onclick="selectStock('full')">✓ Full</button>
+        <button type="button" class="stock-btn stock-low"  id="stock-low"   onclick="selectStock('low')">⚠ Running low</button>
+        <button type="button" class="stock-btn stock-out"  id="stock-out"   onclick="selectStock('out')">✕ Out of stock</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn danger" id="btn-delete-pantry" onclick="deletePantryItem()" style="display:none; margin-right:auto;">Delete</button>
+      <button class="btn" onclick="closePantryModal()">Cancel</button>
+      <button class="btn primary" onclick="savePantryItem()">Save</button>
+    </div>
   </div>
 </div>
 
@@ -621,7 +729,8 @@ const DEFAULT_STATE = {
   ],
   weeks: {},       // keyed by ISO monday date string e.g. "2026-05-19"
   haveAtHome: {},
-  shoppingChecked: {}
+  shoppingChecked: {},
+  pantry: []   // [{ id, name, category, stock: 'full'|'low'|'out' }]
 };
 
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -721,16 +830,18 @@ function migrateState() {
 // ─── Tabs ───
 function switchTab(tab) {
   document.querySelectorAll('.tab').forEach((t, i) =>
-    t.classList.toggle('active', ['planner','meals','shopping'][i] === tab));
+    t.classList.toggle('active', ['planner','meals','pantry','shopping'][i] === tab));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('tab-' + tab).classList.add('active');
   if (tab === 'shopping') renderShopping();
+  if (tab === 'pantry') renderPantry();
 }
 
 // ─── Render ───
 function render() {
   renderPlanner();
   renderMeals();
+  renderPantry();
   updateBadge();
   setWeekLabel();
 }
@@ -821,8 +932,10 @@ function renderMeals() {
 function renderShopping() {
   const container = document.getElementById('shop-meals');
   const missing = getMissingByMeal();
+  const pantryNeeded = (state.pantry || []).filter(i => i.stock === 'low' || i.stock === 'out');
   const entries = Object.entries(missing);
-  if (!entries.length) {
+
+  if (!entries.length && !pantryNeeded.length) {
     container.innerHTML = `<div class="empty">
       <div class="empty-icon">✅</div>
       <p>Nothing to buy! Either no meals are planned<br>or you have everything at home.</p>
@@ -830,6 +943,8 @@ function renderShopping() {
     return;
   }
   container.innerHTML = '';
+
+  // Meal ingredients
   entries.forEach(([mealName, ings]) => {
     const block = document.createElement('div');
     block.className = 'shop-meal-block';
@@ -844,10 +959,31 @@ function renderShopping() {
       }).join('');
     container.appendChild(block);
   });
+
+  // Pantry low/out items
+  if (pantryNeeded.length) {
+    const block = document.createElement('div');
+    block.className = 'shop-meal-block';
+    block.innerHTML = `<div class="shop-meal-title">🏺 Pantry — restock needed</div>` +
+      pantryNeeded.map(item => {
+        const key = 'shop::pantry::' + item.id;
+        const got = !!state.shoppingChecked[key];
+        const badge = item.stock === 'out'
+          ? `<span style="font-size:11px; color:var(--terra); margin-left:6px;">out of stock</span>`
+          : `<span style="font-size:11px; color:var(--gold); margin-left:6px;">running low</span>`;
+        return `<div class="shop-item${got ? ' got' : ''}" onclick="toggleShopItem('${esc(key)}', this)">
+          <input type="checkbox" ${got ? 'checked' : ''} onclick="event.stopPropagation(); toggleShopItem('${esc(key)}', this.closest('.shop-item'))" />
+          <label>${item.name}${badge}</label>
+        </div>`;
+      }).join('');
+    container.appendChild(block);
+  }
 }
 
 function updateBadge() {
-  const n = countMissing();
+  const mealMissing = countMissing();
+  const pantryNeeded = (state.pantry || []).filter(i => i.stock === 'low' || i.stock === 'out').length;
+  const n = mealMissing + pantryNeeded;
   const badge = document.getElementById('shop-badge');
   badge.textContent = n;
   badge.classList.toggle('visible', n > 0);
@@ -1015,6 +1151,121 @@ function deleteMeal(id) {
   toast('Meal deleted');
 }
 
+// ─── Pantry ───
+const CAT_EMOJI = {
+  'Spices & herbs': '🌿', 'Condiments & sauces': '🫙',
+  'Baking & confectionary': '🍬', 'Oils & vinegars': '🫒',
+  'Grains & pasta': '🌾', 'Tins & preserves': '🥫',
+  'Drinks': '☕', 'Other': '📦'
+};
+const STOCK_LABEL = { full: '✓ Full', low: '⚠ Running low', out: '✕ Out of stock' };
+const STOCK_CLASS = { full: 'stock-full', low: 'stock-low', out: 'stock-out' };
+
+let editingPantryId = null;
+let selectedStock = 'full';
+let pantryFilter = 'all';
+
+function renderPantry() {
+  if (!state.pantry) state.pantry = [];
+  const grid = document.getElementById('pantry-grid');
+  const items = pantryFilter === 'all' ? state.pantry
+    : state.pantry.filter(i => i.stock === pantryFilter);
+
+  // group by category
+  const cats = {};
+  items.forEach(item => {
+    if (!cats[item.category]) cats[item.category] = [];
+    cats[item.category].push(item);
+  });
+
+  if (!Object.keys(cats).length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">🏺</div>
+      <p>${pantryFilter === 'all' ? 'Your pantry is empty. Add spices, condiments and staples you want to track.' : 'Nothing in this filter.'}</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = '';
+  Object.entries(cats).sort().forEach(([cat, catItems]) => {
+    const block = document.createElement('div');
+    block.className = 'pantry-category';
+    block.innerHTML = `<div class="pantry-cat-header">
+      <span class="pantry-cat-name">${CAT_EMOJI[cat] || '📦'} ${cat}</span>
+      <span style="font-size:12px; color:var(--ink-faint);">${catItems.length} item${catItems.length !== 1 ? 's' : ''}</span>
+    </div>` + catItems.map(item => `
+      <div class="pantry-item">
+        <span class="pantry-item-name">${item.name}</span>
+        <button class="stock-btn ${STOCK_CLASS[item.stock]}" data-action="cycle-stock" data-id="${item.id}">${STOCK_LABEL[item.stock]}</button>
+        <button class="btn-icon" data-action="edit-pantry" data-id="${item.id}" style="width:26px;height:26px;font-size:12px; flex-shrink:0;">✏️</button>
+      </div>`).join('');
+    grid.appendChild(block);
+  });
+}
+
+function cycleStock(id) {
+  const item = state.pantry.find(i => i.id === id);
+  if (!item) return;
+  const order = ['full', 'low', 'out'];
+  item.stock = order[(order.indexOf(item.stock) + 1) % 3];
+  saveState(); renderPantry(); updateBadge();
+  toast(`${item.name} → ${STOCK_LABEL[item.stock]}`);
+}
+
+function openPantryModal(id) {
+  editingPantryId = id || null;
+  const item = id ? state.pantry.find(i => i.id === id) : null;
+  document.getElementById('pantry-modal-title').textContent = item ? 'Edit pantry item' : 'Add pantry item';
+  document.getElementById('inp-pantry-name').value = item ? item.name : '';
+  document.getElementById('inp-pantry-cat').value = item ? item.category : 'Spices & herbs';
+  document.getElementById('btn-delete-pantry').style.display = item ? '' : 'none';
+  selectStock(item ? item.stock : 'full');
+  document.getElementById('pantry-modal').classList.add('open');
+  setTimeout(() => document.getElementById('inp-pantry-name').focus(), 100);
+}
+function closePantryModal() { document.getElementById('pantry-modal').classList.remove('open'); }
+
+function selectStock(val) {
+  selectedStock = val;
+  ['full','low','out'].forEach(s => {
+    document.getElementById('stock-' + s).style.outline = s === val ? '2px solid var(--ink)' : 'none';
+    document.getElementById('stock-' + s).style.outlineOffset = '2px';
+  });
+}
+
+function savePantryItem() {
+  const name = document.getElementById('inp-pantry-name').value.trim();
+  if (!name) { toast('Please enter an item name'); return; }
+  const category = document.getElementById('inp-pantry-cat').value;
+  if (!state.pantry) state.pantry = [];
+  if (editingPantryId) {
+    const item = state.pantry.find(i => i.id === editingPantryId);
+    item.name = name; item.category = category; item.stock = selectedStock;
+    toast('Item updated ✓');
+  } else {
+    state.pantry.push({ id: 'p' + Date.now(), name, category, stock: selectedStock });
+    toast('Item added ✓');
+  }
+  saveState(); renderPantry(); updateBadge(); closePantryModal();
+}
+
+function deletePantryItem() {
+  if (!confirm('Remove this item from your pantry?')) return;
+  state.pantry = state.pantry.filter(i => i.id !== editingPantryId);
+  saveState(); renderPantry(); updateBadge(); closePantryModal();
+  toast('Item removed');
+}
+
+// ─── Pantry filter buttons ───
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pantryFilter = btn.dataset.filter;
+    renderPantry();
+  });
+});
+
 // ─── Toast ───
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -1028,8 +1279,10 @@ function toast(msg) {
 document.addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  if (btn.dataset.action === 'assign') openAssign(btn.dataset.day, btn.dataset.slot);
-  if (btn.dataset.action === 'ingcheck') openIngCheck(btn.dataset.mealid);
+  if (btn.dataset.action === 'assign')      openAssign(btn.dataset.day, btn.dataset.slot);
+  if (btn.dataset.action === 'ingcheck')    openIngCheck(btn.dataset.mealid);
+  if (btn.dataset.action === 'cycle-stock') cycleStock(btn.dataset.id);
+  if (btn.dataset.action === 'edit-pantry') openPantryModal(btn.dataset.id);
 });
 
 // ─── Close modals on bg click ───
